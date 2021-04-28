@@ -1,0 +1,238 @@
+---
+title: "HUDK4051: Social Network Analysis"
+author: "Charles Lang"
+date: "1/26/2018"
+output: html_document
+---
+
+In this assignment you will be generating and analyzing three social networks (also known as graphs or sociograms) based on three different measures. You will be using data from:
+
+Representing Classroom Social Structure. Melbourne: Victoria Institute of
+Secondary Education, M. Vickers and S. Chan, (1981)
+
+Available from the Index of Complex Networks ([ICON](https://icon.colorado.edu/#!/))
+
+The data were collected by Vickers & Chan from 29 seventh grade students in a school in Victoria, Australia. Students were asked to nominate their classmates on a number of relations including the following three "layers":  
+
+1. Who do you get on with in the class?  
+2. Who are your best friends in the class?  
+3. Who would you prefer to work with?  
+
+You have a data set for each of these questions, please complete the following tasks.
+
+## Data Wrangling
+
+Manipulate each of the data sets so that it is suitable for building a social network using iGraph.
+
+*If you have not previously taken HUDK4050 please sign up for office hours before you attempt this project*
+
+```{r}
+install.packages("igraph", type = "binary")
+
+library(igraph)
+
+get_on<-read.csv('get.on.with.csv')
+head(get_on)
+
+best_friends<-read.csv('best.friends.csv')
+head(best_friends)
+
+work_with<-read.csv('work.with.csv')
+head(work_with)
+
+get_on_edge <- count(get_on,to,from)
+get_on_vertex <- unique(select(get_on,from,gender.from))
+
+best_friends_edge <- count(best_friends,to,from)
+best_friends_vertex <- unique(select(best_friends,from,gender.from))
+
+work_with_edge <- count(work_with,to,from)
+work_with_vertex <- unique(select(work_with,from,gender.from))
+
+
+
+
+```
+
+## Visualize the Networks
+
+Create a graph for each of the data sets, are the graphs directed or undirected? Visualize each of the graphs you have created and color the nodes according to gender. Save pdfs of your graphs in this directory for upload to Github.
+
+```{r}
+get_on_graph <- graph.data.frame(get_on_edge, directed = TRUE)
+best_friends_graph <- graph.data.frame(best_friends_edge, directed = TRUE)
+work_with_graph <-graph.data.frame(work_with_edge, directed = TRUE)
+
+get_on_vertex$gender.from <- as.factor(get_on_vertex$gender.from)
+pdf(file = "get_on.pdf")
+plot(get_on_graph, layout=layout.fruchterman.reingold, vertex.color =  get_on_vertex$gender.from) 
+dev.off()
+
+best_friends_vertex$gender.from <- as.factor(best_friends_vertex$gender.from)
+pdf(file = "best_friends.pdf")
+plot(best_friends_graph, layout=layout.fruchterman.reingold, vertex.color =  best_friends_vertex$gender.from) 
+dev.off()
+
+work_with_vertex$gender.from <- as.factor(work_with_vertex$gender.from)
+pdf(file = "work_with.pdf")
+plot(work_with_graph, layout=layout.fruchterman.reingold, vertex.color =  work_with_vertex$gender.from) 
+dev.off()
+
+```
+
+## Centrality Measures
+
+Who in the class has the highest degree centrality for each measure?
+```{r}
+# degree(get_on_graph)
+
+sort(degree(get_on_graph),decreasing=TRUE) 
+# get on = Student 11
+sort(degree(best_friends_graph),decreasing=TRUE)
+# best friends = Student 8
+sort(degree(work_with_graph),decreasing=TRUE)
+# work with = Student 6
+```
+
+Does **degree centrality** mean the same thing for each of your networks? Does it make sense for each of your networks?
+
+get_on = number of students a student gets on with
+best_friends = number of best friends a student has
+work_with = number of students a student will work with
+
+Degree centrality makes most sense for 'work with' and 'best friends', closeness centrality seems like a better measure of popularity for 'gets on with' because a student that is closer to all nodes can be considered more universally liked (a student specific to a clique would have high degree centrality but low closeness centrality).
+
+Who in the class has the highest closeness centrality?
+
+```{r}
+sort(closeness(get_on_graph),decreasing=TRUE) 
+# get on = Students 14 & 16
+sort(closeness(best_friends_graph),decreasing=TRUE)
+# best friends = Student 21
+sort(closeness(work_with_graph),decreasing=TRUE)
+# work with = Student 20
+```
+
+How does **betweeness centrality** differ from degree centrality? Is one more useful than the other? Does their utility differ between your three networks?
+
+Betweeness centrality is useful for finding influential students. It represents students who are more likely to be the closest path between randomly chosen students. 
+
+## Simple structures
+
+Count the number of dyads and the number and type of triads using the following commands.
+```{r}
+dyad_census(get_on_graph)
+dyad_census(best_friends_graph)
+dyad_census(work_with_graph)
+```
+[Documentation](http://igraph.org/r/doc/dyad_census.html)
+
+```{r}
+triad_census(get_on_graph)
+triad_census(best_friends_graph)
+triad_census(work_with_graph)
+```
+[Documentation](http://igraph.org/r/doc/triad_census.html)
+
+Do these metrics tell you anything about the networks? If so what?
+Dyad census - how likely are pairs of students to exist with mutual connections/non-mutual connections/no connections
+Triad census - how prevalent are different types of relationships (no relation, single relation, directed line etc. ) within given sets of three students
+
+
+## Cliques
+
+Answer the following questions using the [clique functions](http://igraph.org/r/doc/cliques.html)
+
+What is the size of the largest clique(s) in each of the three networks?
+
+```{r}
+clique_num(get_on_graph)
+# get_on = 12
+clique_num(best_friends_graph)
+# best_friends = 7
+clique_num(work_with_graph)
+# work_with = 9
+```
+
+Which nodes/vertices are in the largest cliques for the three networks? Is there much overlap?
+
+```{r}
+largest_cliques(get_on_graph)
+# get_on = 8  11 22 14 16 19 15 20 21 23 13 24
+largest_cliques(best_friends_graph)
+# best_friends = 8  11 22 14 20 21 13
+largest_cliques(work_with_graph)
+# work_with = 6  8  16 14 11 20 21 22 23
+
+# Overlap = 8, 14, 11, 20, 21
+```
+
+How many **maximal cliques** are there in each of the networks?
+
+```{r}
+
+count_max_cliques(get_on_graph)
+# get_on = 64
+count_max_cliques(best_friends_graph)
+# best_friends = 35
+count_max_cliques(work_with_graph)
+# work_with = 36
+
+```
+
+## Components & Cutpoints
+
+Find the cutpoints (articulation points) for each of the three networks you generated. What does this tell you about the graphs? Does what you find match a visual exploration of the networks?
+
+```{r}
+articulation_points(get_on_graph)
+# get_on = none
+articulation_points(best_friends_graph)
+# best_friends = 13
+articulation_points(work_with_graph)
+# work_with = 13
+
+# This matches the visual representation
+```
+
+
+## Putting it all together
+
+Write a narrative description of the social ties among members of this 7th grade class using the network, centrality and structural metrics you have developed. Can you provide any recommendations to the teacher of this class based on your analysis? What other information would you want to know? Can you remember being in seventh grade, does this reflect your experience?
+
+This class seems relatively close acquaintances, the dyad_census of get_on_with shows that 166/406 dyads have no relationship, so most of the class is likely to get on with other students. However, students are less likely to be best friends or work with eachother. There are a set of very popular students (e.g. 8, 13), with some (13, based on clique presence) being more social and others being more well rounded. This seems to reflect and average 7th grade experience, with strong cliques and many general acquaintances. 
+
+## Test out your skills
+
+Find another data set that interests you on the ([ICON](https://icon.colorado.edu/#!/)) website. Load the data into igraph, visualize the graph and use one of the metrics you have learned to characterize structures within the graph.
+
+```{r}
+dark_web<-read.csv('darkweb-edges.ss', sep=';', header = TRUE)
+head(dark_web)
+
+dark_web_edge <- count(dark_web,Target,Source)
+dark_web_graph <- graph.data.frame(dark_web_edge, directed = TRUE)
+
+pdf(file = "dark_web.pdf")
+plot(dark_web_graph, layout=layout.fruchterman.reingold) 
+dev.off()
+
+dyad_census(dark_web_graph)
+# $mut
+# [1] 225
+# 
+# $asym
+# [1] 24654
+# 
+# $null
+# [1] 25733374
+# 
+# Tons of unassociated nodes in the dark web - seems intuitive
+
+
+```
+
+
+```{r}
+
+
